@@ -17,14 +17,15 @@ namespace leveldb {
 
 class Env;
 
-enum FileType {
-  kLogFile,
-  kDBLockFile,
-  kTableFile,
-  kDescriptorFile,
-  kCurrentFile,
-  kTempFile,
-  kInfoLogFile  // Either the current one, or an old one
+enum FileType
+{
+    kLogFile,
+    kDBLockFile,
+    kTableFile,
+    kDescriptorFile,
+    kCurrentFile,
+    kTempFile,
+    kInfoLogFile  // Either the current one, or an old one
 };
 
 // Return the name of the log file with the specified number

@@ -22,7 +22,7 @@ struct ReadOptions;
 // an iterator over the contents of the corresponding block.
 Iterator* NewTwoLevelIterator(
     Iterator* index_iter,
-    Iterator* (*block_function)(
+    Iterator * (*block_function)(
         void* arg,
         const ReadOptions& options,
         const Slice& index_value),
