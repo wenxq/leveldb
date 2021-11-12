@@ -149,6 +149,8 @@ public:
     // Therefore the following call will compact the entire database:
     //    db->CompactRange(nullptr, nullptr);
     virtual void CompactRange(const Slice* begin, const Slice* end) = 0;
+
+    virtual void DeleteDBFile(int level, uint64_t number) = 0;
 };
 
 // Destroy the contents of the specified database.

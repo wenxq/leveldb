@@ -589,7 +589,8 @@ public:
         ResetDBState(reset_method);
         ASSERT_OK(OpenDB());
         ASSERT_OK(Verify(0, num_pre_sync, FaultInjectionTest::VAL_EXPECT_NO_ERROR));
-        ASSERT_OK(Verify(num_pre_sync, num_post_sync, FaultInjectionTest::VAL_EXPECT_ERROR));
+        ASSERT_OK(Verify(num_pre_sync, num_post_sync,
+                         FaultInjectionTest::VAL_EXPECT_ERROR));
     }
 
     void NoWriteTestPreFault()

@@ -18,6 +18,7 @@ Options::Options()
       info_log(nullptr),
       write_buffer_size(4 << 20),
       max_open_files(1000),
+      ignore_miss_files(0),
       block_cache(nullptr),
       block_size(4096),
       block_restart_interval(16),

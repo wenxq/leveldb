@@ -4,8 +4,8 @@
 
 #include "leveldb/c.h"
 
-#include <stdlib.h>
 #include "leveldb/cache.h"
+#include "leveldb/table.h"
 #include "leveldb/comparator.h"
 #include "leveldb/db.h"
 #include "leveldb/env.h"
@@ -14,8 +14,14 @@
 #include "leveldb/options.h"
 #include "leveldb/status.h"
 #include "leveldb/write_batch.h"
+#include "version_edit.h"
+#include "log_reader.h"
+#include "filename.h"
+#include <map>
+#include <stdlib.h>
 
 using leveldb::Cache;
+using leveldb::Table;
 using leveldb::Comparator;
 using leveldb::CompressionType;
 using leveldb::DB;
@@ -40,7 +46,49 @@ using leveldb::WritableFile;
 using leveldb::WriteBatch;
 using leveldb::WriteOptions;
 
+namespace leveldb {
+void AppendNumberTo(std::string* str, uint64_t num);
+} // namespace leveldb
+
 extern "C" {
+
+    class StdoutPrinter : public WritableFile
+    {
+    public:
+        virtual Status Append(const Slice& data)
+        {
+            fwrite(data.data(), 1, data.size(), stdout);
+            return Status::OK();
+        }
+        virtual Status Close()
+        {
+            return Status::OK();
+        }
+        virtual Status Flush()
+        {
+            return Status::OK();
+        }
+        virtual Status Sync()
+        {
+            return Status::OK();
+        }
+    };
+
+    // Notified when log reader encounters corruption.
+    class CorruptionReporter : public leveldb::log::Reader::Reporter
+    {
+    public:
+        WritableFile* dst_;
+        virtual void Corruption(size_t bytes, const Status& status)
+        {
+            std::string r = "corruption: ";
+            leveldb::AppendNumberTo(&r, bytes);
+            r += " bytes; ";
+            r += status.ToString();
+            r.push_back('\n');
+            dst_->Append(r);
+        }
+    };
 
     struct leveldb_t
     {
@@ -93,6 +141,13 @@ extern "C" {
     struct leveldb_filelock_t
     {
         FileLock*         rep;
+    };
+
+    typedef std::map<std::pair<int, uint64_t>, leveldb::FileMetaData> FileMetaMap;
+    struct leveldb_descriptor
+    {
+        FileMetaMap db_files;
+        FileMetaMap::const_iterator iter;
     };
 
     struct leveldb_comparator_t : public Comparator
@@ -543,6 +598,11 @@ extern "C" {
         opt->rep.max_open_files = n;
     }
 
+    void leveldb_options_set_ignore_miss_files(leveldb_options_t* opt, int n)
+    {
+        opt->rep.ignore_miss_files = n;
+    }
+
     void leveldb_options_set_cache(leveldb_options_t* opt, leveldb_cache_t* c)
     {
         opt->rep.block_cache = c->rep;
@@ -753,4 +813,147 @@ extern "C" {
         return kMinorVersion;
     }
 
+    leveldb_iterator_t* leveldb_create_file_iterator(leveldb_env_t* env, const char* fname)
+    {
+        uint64_t file_size;
+        RandomAccessFile* file = nullptr;
+        Table* table = nullptr;
+        Status s = env->rep->GetFileSize(fname, &file_size);
+        if (s.ok())
+        {
+            s = env->rep->NewRandomAccessFile(fname, &file);
+        }
+        if (s.ok())
+        {
+            // We use the default comparator, which may or may not match the
+            // comparator used in this database. However this should not cause
+            // problems since we only use Table operations that do not require
+            // any comparisons.  In particular, we do not call Seek or Prev.
+            s = Table::Open(Options(), file, file_size, &table);
+        }
+        if (!s.ok())
+        {
+            delete table;
+            delete file;
+            return nullptr;
+        }
+
+        ReadOptions ro;
+        ro.fill_cache = false;
+        leveldb_iterator_t* result = new leveldb_iterator_t;
+        result->rep = table->NewIterator(ro);
+        return result;
+    }
+
+    void leveldb_deletefile(
+        leveldb_t* db,
+        int level, uint64_t number)
+    {
+        db->rep->DeleteDBFile(level, number);
+    }
+
+    leveldb_descriptor* leveldb_create_descriptor(leveldb_env_t* env, const char* fname)
+    {
+        std::string fstr = fname;
+        size_t pos = fstr.rfind('/');
+        std::string basename;
+        if (pos == std::string::npos)
+        {
+            basename = fstr;
+        }
+        else
+        {
+            basename = std::string(fstr.data() + pos + 1, fstr.size() - pos - 1);
+        }
+        uint64_t ignored;
+        leveldb::FileType ftype;
+        bool ok = leveldb::ParseFileName(basename, &ignored, &ftype);
+        if (!ok || ftype != leveldb::kDescriptorFile) return nullptr;
+
+        SequentialFile* file = nullptr;
+        Status s = env->rep->NewSequentialFile(fstr, &file);
+        if (!s.ok()) return nullptr;
+
+        CorruptionReporter reporter;
+        StdoutPrinter dst;
+        reporter.dst_ = &dst;
+        leveldb::log::Reader reader(file, &reporter, true, 0);
+
+        Slice record;
+        std::string scratch;
+        leveldb_descriptor* desc = new leveldb_descriptor();
+        while (reader.ReadRecord(&record, &scratch))
+        {
+            leveldb::VersionEdit edit;
+            s = edit.DecodeFrom(record);
+            if (!s.ok())
+            {
+                delete desc;
+                desc = nullptr;
+                break;
+            }
+
+            for (auto& added : edit.GetAddedFiles())
+            {
+                auto& fmeta = added.second;
+                desc->db_files.insert({ {added.first, fmeta.number}, fmeta });
+            }
+
+            for (auto& del : edit.GetDeletedFiles())
+            {
+                desc->db_files.erase(del);
+            }
+        }
+        delete file;
+        return desc;
+    }
+
+    int leveldb_descriptor_get_value(leveldb_descriptor* desc,
+                                     int* level, uint64_t* number,
+                                     const char** smallest_key, size_t* slen,
+                                     const char** largest_key, size_t* llen)
+    {
+        if (desc->iter == desc->db_files.end())
+        {
+            return -1;
+        }
+
+        *level = desc->iter->first.first;
+        auto& fmeta = desc->iter->second;
+        leveldb::ParsedInternalKey smallest, largest;
+        bool ok_1 = leveldb::ParseInternalKey(fmeta.smallest.Encode(), &smallest);
+        bool ok_2 = leveldb::ParseInternalKey(fmeta.largest.Encode(), &largest);
+        if (!ok_1 || !ok_2) return -2;
+
+        *number = fmeta.number;
+        *smallest_key = smallest.user_key.data();
+        *largest_key = largest.user_key.data();
+        *slen = smallest.user_key.size();
+        *llen = largest.user_key.size();
+        return 0;
+    }
+
+    int leveldb_descriptor_first(leveldb_descriptor* desc,
+                                 int* level, uint64_t* number,
+                                 const char** smallest_key, size_t* slen,
+                                 const char** largest_key, size_t* llen)
+    {
+        desc->iter = desc->db_files.begin();
+        return leveldb_descriptor_get_value(desc, level, number, smallest_key, slen, largest_key, llen);
+    }
+
+    int leveldb_descriptor_next(leveldb_descriptor* desc,
+                                int* level, uint64_t* number,
+                                const char** smallest_key, size_t* slen,
+                                const char** largest_key, size_t* llen)
+    {
+        desc->iter++;
+        return leveldb_descriptor_get_value(desc, level, number, smallest_key, slen, largest_key, llen);
+    }
+
+    void leveldb_destroy_descriptor(leveldb_descriptor* desc)
+    {
+        delete desc;
+    }
 }  // end extern "C"
+

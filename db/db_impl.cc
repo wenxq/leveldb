@@ -21,6 +21,7 @@
 #include "db/memtable.h"
 #include "db/table_cache.h"
 #include "db/version_set.h"
+#include "db/version_edit.h"
 #include "db/write_batch_internal.h"
 #include "leveldb/db.h"
 #include "leveldb/env.h"
@@ -388,12 +389,18 @@ Status DBImpl::Recover(VersionEdit* edit, bool* save_manifest)
                 logs.push_back(number);
         }
     }
-    if (!expected.empty())
+    if (!expected.empty() && !options_.ignore_miss_files)
     {
-        char buf[50];
-        snprintf(buf, sizeof(buf), "%d missing files; e.g.",
-                 static_cast<int>(expected.size()));
-        return Status::Corruption(buf, TableFileName(dbname_, *(expected.begin())));
+        if (!options_.ignore_miss_files)
+        {
+            char buf[50];
+            snprintf(buf, sizeof(buf), "%d missing files; e.g.",
+                     static_cast<int>(expected.size()));
+            return Status::Corruption(buf, TableFileName(dbname_, *(expected.begin())));
+        }
+        Log(options_.info_log, "%d missing files; e.g. %s",
+                     static_cast<int>(expected.size()),
+                     TableFileName(dbname_, *(expected.begin())).c_str());
     }
 
     // Recover in the order in which the logs were generated
@@ -807,6 +814,28 @@ void DBImpl::BackgroundCall()
     // so reschedule another compaction if needed.
     MaybeScheduleCompaction();
     background_work_finished_signal_.SignalAll();
+}
+
+void DBImpl::DeleteDBFile(int level, uint64_t number)
+{
+    MutexLock l(&mutex_);
+    VersionEdit edit;
+    edit.DeleteFile(level, number);
+    Status status = versions_->LogAndApply(&edit, &mutex_);
+    if (!status.ok())
+    {
+        Log(options_.info_log,
+            "Compaction error: %s", status.ToString().c_str());
+    }
+    else
+    {
+        VersionSet::LevelSummaryStorage tmp;
+        Log(options_.info_log, "DeleteFile #%lld level-%d %s: %s\n",
+            static_cast<unsigned long long>(number),
+            level,
+            status.ToString().c_str(),
+            versions_->LevelSummary(&tmp));
+    }
 }
 
 void DBImpl::BackgroundCompaction()

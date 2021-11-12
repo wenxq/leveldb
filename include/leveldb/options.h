@@ -91,6 +91,7 @@ struct LEVELDB_EXPORT Options
     //
     // Default: 1000
     int max_open_files;
+    int ignore_miss_files; // 忽略丢失的 ldb 文件
 
     // Control over blocks (user data is stored in a set of blocks, and
     // a block is the unit of reading from disk).

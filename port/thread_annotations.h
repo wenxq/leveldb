@@ -11,21 +11,21 @@
 
 #if !defined(THREAD_ANNOTATION_ATTRIBUTE__)
 
-#if defined(__clang__)
+    #if defined(__clang__)
 
-#define THREAD_ANNOTATION_ATTRIBUTE__(x)   __attribute__((x))
-#else
-#define THREAD_ANNOTATION_ATTRIBUTE__(x)   // no-op
-#endif
+        #define THREAD_ANNOTATION_ATTRIBUTE__(x)   __attribute__((x))
+    #else
+        #define THREAD_ANNOTATION_ATTRIBUTE__(x)   // no-op
+    #endif
 
 #endif  // !defined(THREAD_ANNOTATION_ATTRIBUTE__)
 
 #ifndef GUARDED_BY
-#define GUARDED_BY(x) THREAD_ANNOTATION_ATTRIBUTE__(guarded_by(x))
+    #define GUARDED_BY(x) THREAD_ANNOTATION_ATTRIBUTE__(guarded_by(x))
 #endif
 
 #ifndef PT_GUARDED_BY
-#define PT_GUARDED_BY(x) THREAD_ANNOTATION_ATTRIBUTE__(pt_guarded_by(x))
+    #define PT_GUARDED_BY(x) THREAD_ANNOTATION_ATTRIBUTE__(pt_guarded_by(x))
 #endif
 
 #ifndef ACQUIRED_AFTER

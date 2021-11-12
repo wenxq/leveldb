@@ -306,7 +306,7 @@ std::string VersionEdit::DebugString() const
     {
         const FileMetaData& f = new_files_[i].second;
         r.append("\n  AddFile: ");
-        AppendNumberTo(&r, new_files_[i].first);
+        AppendNumberTo(&r, new_files_[i].first); // level
         r.append(" ");
         AppendNumberTo(&r, f.number);
         r.append(" ");

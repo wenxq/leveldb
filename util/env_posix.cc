@@ -16,6 +16,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <execinfo.h>
 #include <deque>
 #include <limits>
 #include <set>
@@ -31,7 +32,7 @@
 // HAVE_FDATASYNC is defined in the auto-generated port_config.h, which is
 // included by port_stdcxx.h.
 #if !HAVE_FDATASYNC
-#define fdatasync fsync
+    #define fdatasync fsync
 #endif  // !HAVE_FDATASYNC
 
 namespace leveldb {
@@ -43,8 +44,29 @@ static int mmap_limit = -1;
 
 static const size_t kBufSize = 65536;
 
+const int kStackLength = 64;
+static void print_backtrace()
+{
+    void** stack = new void*[kStackLength];
+    int depth = ::backtrace(stack, kStackLength);
+    char** strings = ::backtrace_symbols(stack, depth);
+    if (!strings)
+    {
+        fprintf(stderr, "<Unknown error: backtrace_symbols returned NULL>\n");
+        return ;
+    }
+
+    for (int i = 0; i < depth; i++)
+    {
+        fprintf(stderr, "%s\n", strings[i]);
+    }
+    ::free(strings);
+    delete[] stack;
+}
+
 static Status PosixError(const std::string& context, int err_number)
 {
+    //print_backtrace();
     if (err_number == ENOENT)
     {
         return Status::NotFound(context, strerror(err_number));

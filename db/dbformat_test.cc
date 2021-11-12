@@ -57,8 +57,8 @@ TEST(FormatTest, InternalKey_EncodeDecode)
     {
         1, 2, 3,
         (1ull << 8) - 1, 1ull << 8, (1ull << 8) + 1,
-                              (1ull << 16) - 1, 1ull << 16, (1ull << 16) + 1,
-                              (1ull << 32) - 1, 1ull << 32, (1ull << 32) + 1
+        (1ull << 16) - 1, 1ull << 16, (1ull << 16) + 1,
+        (1ull << 32) - 1, 1ull << 32, (1ull << 32) + 1
     };
     for (int k = 0; k < sizeof(keys) / sizeof(keys[0]); k++)
     {

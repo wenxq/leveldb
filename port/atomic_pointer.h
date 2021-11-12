@@ -23,21 +23,21 @@
 #include <atomic>
 
 #ifdef OS_WIN
-#include <windows.h>
+    #include <windows.h>
 #endif
 
 #if defined(_M_X64) || defined(__x86_64__)
-#define ARCH_CPU_X86_FAMILY 1
+    #define ARCH_CPU_X86_FAMILY 1
 #elif defined(_M_IX86) || defined(__i386__) || defined(__i386)
-#define ARCH_CPU_X86_FAMILY 1
+    #define ARCH_CPU_X86_FAMILY 1
 #elif defined(__ARMEL__)
-#define ARCH_CPU_ARM_FAMILY 1
+    #define ARCH_CPU_ARM_FAMILY 1
 #elif defined(__aarch64__)
-#define ARCH_CPU_ARM64_FAMILY 1
+    #define ARCH_CPU_ARM64_FAMILY 1
 #elif defined(__ppc__) || defined(__powerpc__) || defined(__powerpc64__)
-#define ARCH_CPU_PPC_FAMILY 1
+    #define ARCH_CPU_PPC_FAMILY 1
 #elif defined(__mips__)
-#define ARCH_CPU_MIPS_FAMILY 1
+    #define ARCH_CPU_MIPS_FAMILY 1
 #endif
 
 namespace leveldb {

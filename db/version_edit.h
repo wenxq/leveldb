@@ -29,6 +29,10 @@ struct FileMetaData
 class VersionEdit
 {
 public:
+    typedef std::set< std::pair<int, uint64_t> > DeletedFileSet;
+    typedef std::vector< std::pair<int, FileMetaData> > AddedFileList;
+
+public:
     VersionEdit()
     {
         Clear();
@@ -94,10 +98,11 @@ public:
 
     std::string DebugString() const;
 
+    const DeletedFileSet& GetDeletedFiles() const { return deleted_files_; }
+    const AddedFileList&  GetAddedFiles()   const { return new_files_; }
+
 private:
     friend class VersionSet;
-
-    typedef std::set< std::pair<int, uint64_t> > DeletedFileSet;
 
     std::string comparator_;
     uint64_t log_number_;
@@ -112,7 +117,7 @@ private:
 
     std::vector< std::pair<int, InternalKey> > compact_pointers_;
     DeletedFileSet deleted_files_;
-    std::vector< std::pair<int, FileMetaData> > new_files_;
+    AddedFileList  new_files_;
 };
 
 }  // namespace leveldb

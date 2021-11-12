@@ -67,6 +67,18 @@ typedef struct leveldb_snapshot_t      leveldb_snapshot_t;
 typedef struct leveldb_writablefile_t  leveldb_writablefile_t;
 typedef struct leveldb_writebatch_t    leveldb_writebatch_t;
 typedef struct leveldb_writeoptions_t  leveldb_writeoptions_t;
+typedef struct leveldb_descriptor      leveldb_descriptor_t;
+
+LEVELDB_EXPORT leveldb_descriptor_t* leveldb_create_descriptor(leveldb_env_t* env, const char* fname);
+LEVELDB_EXPORT int leveldb_descriptor_first(leveldb_descriptor_t* desc,
+                                            int* level, uint64_t* number,
+                                            const char** smallest_key, size_t* slen,
+                                            const char** largest_key, size_t* llen);
+LEVELDB_EXPORT int leveldb_descriptor_next(leveldb_descriptor_t* desc,
+                                            int* level, uint64_t* number,
+                                            const char** smallest_key, size_t* slen,
+                                            const char** largest_key, size_t* llen);
+LEVELDB_EXPORT void leveldb_destroy_descriptor(leveldb_descriptor_t* desc);
 
 /* DB operations */
 
@@ -95,6 +107,9 @@ LEVELDB_EXPORT char* leveldb_get(leveldb_t* db,
                                  const leveldb_readoptions_t* options,
                                  const char* key, size_t keylen, size_t* vallen,
                                  char** errptr);
+
+LEVELDB_EXPORT void leveldb_deletefile(leveldb_t* db, int levle, uint64_t number);
+LEVELDB_EXPORT leveldb_iterator_t* leveldb_create_file_iterator(leveldb_env_t* env, const char* fname);
 
 LEVELDB_EXPORT leveldb_iterator_t* leveldb_create_iterator(
     leveldb_t* db, const leveldb_readoptions_t* options);
@@ -186,6 +201,7 @@ LEVELDB_EXPORT void leveldb_options_set_block_restart_interval(
     leveldb_options_t*, int);
 LEVELDB_EXPORT void leveldb_options_set_max_file_size(leveldb_options_t*,
         size_t);
+LEVELDB_EXPORT void leveldb_options_set_ignore_miss_files(leveldb_options_t*, int);
 
 enum
 {

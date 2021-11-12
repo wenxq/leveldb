@@ -284,7 +284,8 @@ bool SkipList<Key, Comparator>::KeyIsAfterNode(const Key& key, Node* n) const
 }
 
 template<typename Key, class Comparator>
-typename SkipList<Key, Comparator>::Node* SkipList<Key, Comparator>::FindGreaterOrEqual(const Key& key, Node** prev)
+typename SkipList<Key, Comparator>::Node*
+SkipList<Key, Comparator>::FindGreaterOrEqual(const Key& key, Node** prev)
 const
 {
     Node* x = head_;

@@ -10,23 +10,23 @@
 // configuration detection.
 #if defined(LEVELDB_HAS_PORT_CONFIG_H)
 
-#if LEVELDB_HAS_PORT_CONFIG_H
-#include "port/port_config.h"
-#endif  // LEVELDB_HAS_PORT_CONFIG_H
+    #if LEVELDB_HAS_PORT_CONFIG_H
+        #include "port/port_config.h"
+    #endif  // LEVELDB_HAS_PORT_CONFIG_H
 
 #elif defined(__has_include)
 
-#if __has_include("port/port_config.h")
-#include "port/port_config.h"
-#endif  // __has_include("port/port_config.h")
+    #if __has_include("port/port_config.h")
+        #include "port/port_config.h"
+    #endif  // __has_include("port/port_config.h")
 
 #endif  // defined(LEVELDB_HAS_PORT_CONFIG_H)
 
 #if HAVE_CRC32C
-#include <crc32c/crc32c.h>
+    #include <crc32c/crc32c.h>
 #endif  // HAVE_CRC32C
 #if HAVE_SNAPPY
-#include <snappy.h>
+    #include <snappy/snappy.h>
 #endif  // HAVE_SNAPPY
 
 #include <stddef.h>

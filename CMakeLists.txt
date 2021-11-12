@@ -15,9 +15,12 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(LEVELDB_BUILD_TESTS "Build LevelDB's unit tests" ON)
+option(LEVELDB_BUILD_TESTS "Build LevelDB's unit tests" OFF)
 option(LEVELDB_BUILD_BENCHMARKS "Build LevelDB's benchmarks" ON)
 option(LEVELDB_INSTALL "Install LevelDB's header and library" ON)
+
+link_directories("/usr/local/lib/")
+include_directories("/usr/local/include")
 
 include(TestBigEndian)
 test_big_endian(LEVELDB_IS_BIG_ENDIAN)
@@ -27,8 +30,10 @@ check_include_file("unistd.h" HAVE_UNISTD_H)
 
 include(CheckLibraryExists)
 check_library_exists(crc32c crc32c_value "" HAVE_CRC32C)
-check_library_exists(snappy snappy_compress "" HAVE_SNAPPY)
+check_library_exists(snappy snappy_compress "/usr/local" HAVE_SNAPPY)
 check_library_exists(tcmalloc malloc "" HAVE_TCMALLOC)
+set(HAVE_SNAPPY 1)
+#set(HAVE_TCMALLOC 1)
 
 include(CheckSymbolExists)
 check_symbol_exists(fdatasync "unistd.h" HAVE_FDATASYNC)
@@ -76,8 +81,9 @@ include_directories(
 
 if(BUILD_SHARED_LIBS)
   # Only export LEVELDB_EXPORT symbols from the shared library.
-  add_compile_options(-fvisibility=hidden)
+  add_compile_options(-fvisibility=hidden -g)
 endif(BUILD_SHARED_LIBS)
+add_compile_options(-g)
 
 add_library(leveldb "")
 target_sources(leveldb
@@ -222,11 +228,16 @@ endif(HAVE_CLANG_THREAD_SAFETY)
 if(HAVE_CRC32C)
   target_link_libraries(leveldb crc32c)
 endif(HAVE_CRC32C)
+
 if(HAVE_SNAPPY)
   target_link_libraries(leveldb snappy)
+else()
+  message(FATAL_ERROR "NotFound library snappy." )
 endif(HAVE_SNAPPY)
 if(HAVE_TCMALLOC)
   target_link_libraries(leveldb tcmalloc)
+#else()
+#  message(FATAL_ERROR "NotFound library tcmalloc." )
 endif(HAVE_TCMALLOC)
 
 # Needed by port_stdcxx.h
@@ -278,6 +289,8 @@ if(LEVELDB_BUILD_TESTS)
 
   leveldb_test("${PROJECT_SOURCE_DIR}/util/env_test.cc")
   leveldb_test("${PROJECT_SOURCE_DIR}/util/status_test.cc")
+
+  leveldb_test("${PROJECT_SOURCE_DIR}/test/get.cc")
 
   if(NOT BUILD_SHARED_LIBS)
     leveldb_test("${PROJECT_SOURCE_DIR}/db/autocompact_test.cc")
@@ -410,10 +423,10 @@ if(LEVELDB_INSTALL)
     NAMESPACE leveldb::
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/leveldb"
   )
-  install(
-    FILES
-      "${PROJECT_SOURCE_DIR}/cmake/leveldbConfig.cmake"
-      "${PROJECT_BINARY_DIR}/leveldbConfigVersion.cmake"
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/leveldb"
-  )
+  #install(
+  #  FILES
+  #    "${PROJECT_SOURCE_DIR}/cmake/leveldbConfig.cmake"
+  #    "${PROJECT_BINARY_DIR}/leveldbConfigVersion.cmake"
+  #  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/leveldb"
+  #)
 endif(LEVELDB_INSTALL)

@@ -140,6 +140,7 @@ Status ReadBlock(RandomAccessFile* file,
             if (!port::Snappy_GetUncompressedLength(data, n, &ulength))
             {
                 delete[] buf;
+                assert(0);
                 return Status::Corruption("corrupted compressed block contents");
             }
             char* ubuf = new char[ulength];
@@ -147,6 +148,7 @@ Status ReadBlock(RandomAccessFile* file,
             {
                 delete[] buf;
                 delete[] ubuf;
+                assert(0);
                 return Status::Corruption("corrupted compressed block contents");
             }
             delete[] buf;

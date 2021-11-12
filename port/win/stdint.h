@@ -8,7 +8,7 @@
 #define STORAGE_LEVELDB_PORT_WIN_STDINT_H_
 
 #if !defined(_MSC_VER)
-#error This file should only be included when compiling with MSVC.
+    #error This file should only be included when compiling with MSVC.
 #endif
 
 // Define C99 equivalent types.
